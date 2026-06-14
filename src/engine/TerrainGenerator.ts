@@ -6,43 +6,88 @@
 import { createNoise2D, createNoise3D } from 'simplex-noise';
 import { Chunk } from './Chunk';
 import { BlockId } from '../blocks/BlockType';
+import { BiomeId as _BiomeId, BIOME_PARAMS, getBiomeId, BiomeParams } from './BiomeType';
 import { CHUNK_SIZE, CHUNK_HEIGHT } from '../utils/math';
 
-const BASE_HEIGHT = 28;
-const AMPLITUDE = 16;
 const WATER_LEVEL = 24;
-
 const FREQ_MAIN = 0.012;
 const FREQ_DETAIL = 0.04;
 const FREQ_ROUGH = 0.1;
-
 const CAVE_THRESHOLD = 0.6;
 const CAVE_MAX_HEIGHT = 28;
 const CAVE_NOISE_FREQ = 0.05;
+const BIOME_SAMPLE_SIZE = 16;
 
 export class TerrainGenerator {
     private noise2D: (x: number, y: number) => number;
     private caveNoise3D: (x: number, y: number, z: number) => number;
+    private tempNoise: (x: number, y: number) => number;
+    private humidNoise: (x: number, y: number) => number;
 
     constructor(seed?: number) {
         if (seed !== undefined) {
             const prng = mulberry32(seed);
             const prngCaves = mulberry32(seed ^ 0x5a5a5a);
+            const prngTemp = mulberry32(seed ^ 0xa3a3a3);
+            const prngHumid = mulberry32(seed ^ 0x1b1b1b);
             this.noise2D = createNoise2D(prng);
             this.caveNoise3D = createNoise3D(prngCaves);
+            this.tempNoise = createNoise2D(prngTemp);
+            this.humidNoise = createNoise2D(prngHumid);
         } else {
             this.noise2D = createNoise2D();
             this.caveNoise3D = createNoise3D();
+            this.tempNoise = createNoise2D();
+            this.humidNoise = createNoise2D();
         }
     }
 
-    /** Fractal Brownian Motion - stack multiple noise octaves */
-    private fBm(x: number, z: number): number {
-        let height = BASE_HEIGHT;
-        height += this.noise2D(x * FREQ_MAIN, z * FREQ_MAIN) * AMPLITUDE;
-        height += this.noise2D(x * FREQ_DETAIL, z * FREQ_DETAIL) * AMPLITUDE * 0.35;
-        height += this.noise2D(x * FREQ_ROUGH, z * FREQ_ROUGH) * AMPLITUDE * 0.12;
+    private fBm(x: number, z: number, baseHeight: number, amplitude: number): number {
+        let height = baseHeight;
+        height += this.noise2D(x * FREQ_MAIN, z * FREQ_MAIN) * amplitude;
+        height += this.noise2D(x * FREQ_DETAIL, z * FREQ_DETAIL) * amplitude * 0.35;
+        height += this.noise2D(x * FREQ_ROUGH, z * FREQ_ROUGH) * amplitude * 0.12;
         return Math.floor(height);
+    }
+
+    private getBlendedParams(wx: number, wz: number): BiomeParams {
+        const sx = Math.floor(wx / BIOME_SAMPLE_SIZE) * BIOME_SAMPLE_SIZE;
+        const sz = Math.floor(wz / BIOME_SAMPLE_SIZE) * BIOME_SAMPLE_SIZE;
+        const fx = (wx - sx) / BIOME_SAMPLE_SIZE;
+        const fz = (wz - sz) / BIOME_SAMPLE_SIZE;
+
+        const samples = [
+            { x: sx, z: sz, weight: (1 - fx) * (1 - fz) },
+            { x: sx + BIOME_SAMPLE_SIZE, z: sz, weight: fx * (1 - fz) },
+            { x: sx, z: sz + BIOME_SAMPLE_SIZE, weight: (1 - fx) * fz },
+            { x: sx + BIOME_SAMPLE_SIZE, z: sz + BIOME_SAMPLE_SIZE, weight: fx * fz },
+        ];
+
+        let baseHeight = 0;
+        let amplitude = 0;
+        let treeDensity = 0;
+        let bestWeight = 0;
+        let surfaceBlock = BlockId.Grass;
+        let subsurfaceBlock = BlockId.Dirt;
+
+        for (const s of samples) {
+            const temp = this.tempNoise(s.x * 0.003, s.z * 0.003);
+            const humid = this.humidNoise(s.x * 0.004 + 100, s.z * 0.004 + 100);
+            const biomeId = getBiomeId(temp, humid);
+            const params = BIOME_PARAMS[biomeId];
+
+            baseHeight += params.baseHeight * s.weight;
+            amplitude += params.amplitude * s.weight;
+            treeDensity += params.treeDensity * s.weight;
+
+            if (s.weight > bestWeight) {
+                bestWeight = s.weight;
+                surfaceBlock = params.surfaceBlock;
+                subsurfaceBlock = params.subsurfaceBlock;
+            }
+        }
+
+        return { surfaceBlock, subsurfaceBlock, baseHeight, amplitude, treeDensity };
     }
 
     /** Generate terrain for a chunk */
@@ -54,7 +99,8 @@ export class TerrainGenerator {
             for (let z = 0; z < CHUNK_SIZE; z++) {
                 const wx = worldOffsetX + x;
                 const wz = worldOffsetZ + z;
-                const height = this.fBm(wx, wz);
+                const biome = this.getBlendedParams(wx, wz);
+                const height = this.fBm(wx, wz, biome.baseHeight, biome.amplitude);
 
                 for (let y = 0; y <= Math.max(height, WATER_LEVEL); y++) {
                     let blockId: BlockId;
@@ -62,21 +108,19 @@ export class TerrainGenerator {
                     if (y === 0) {
                         blockId = BlockId.Bedrock;
                     } else if (y > height) {
-                        // Above terrain - fill with water up to water level
                         if (y <= WATER_LEVEL) {
                             blockId = BlockId.Water;
                         } else {
-                            continue; // Air (skip)
+                            continue;
                         }
                     } else if (y === height) {
-                        // Surface block
                         if (height <= WATER_LEVEL + 1) {
-                            blockId = BlockId.Sand; // Beaches near water
+                            blockId = BlockId.Sand;
                         } else {
-                            blockId = BlockId.Grass;
+                            blockId = biome.surfaceBlock;
                         }
                     } else if (y > height - 3) {
-                        blockId = BlockId.Dirt;
+                        blockId = biome.subsurfaceBlock;
                     } else {
                         blockId = BlockId.Stone;
                     }

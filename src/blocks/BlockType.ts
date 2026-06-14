@@ -12,6 +12,8 @@ export enum BlockId {
     Sand = 6,
     Water = 7,
     Bedrock = 8,
+    Snow = 9,
+    Ice = 10,
 }
 
 export interface BlockType {
@@ -65,6 +67,14 @@ const BLOCK_DEFINITIONS: Record<BlockId, BlockType> = {
         id: BlockId.Bedrock, name: 'Bedrock', transparent: false, solid: true, breakable: false, affectedByGravity: false,
         colors: { top: '#333333', bottom: '#333333', side: '#333333' },
     },
+    [BlockId.Snow]: {
+        id: BlockId.Snow, name: 'Snow', transparent: false, solid: true, breakable: true, affectedByGravity: false,
+        colors: { top: '#f5f5f5', bottom: '#f5f5f5', side: '#e8e8e8' },
+    },
+    [BlockId.Ice]: {
+        id: BlockId.Ice, name: 'Ice', transparent: true, solid: true, breakable: true, affectedByGravity: false,
+        colors: { top: '#8fc4e8', bottom: '#8fc4e8', side: '#8fc4e8' },
+    },
 };
 
 export function getBlockType(id: BlockId): BlockType {
@@ -95,6 +105,6 @@ export const HOTBAR_BLOCKS: BlockId[] = [
     BlockId.Wood,
     BlockId.Leaves,
     BlockId.Sand,
-    BlockId.Water,
+    BlockId.Snow,
     BlockId.Bedrock,
 ];
