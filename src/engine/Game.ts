@@ -54,6 +54,10 @@ export class Game {
 
     // Callback for UI updates
     onStatsUpdate: ((stats: { fps: number; x: number; y: number; z: number; chunks: number }) => void) | null = null;
+    onSaveStatus: ((message: string) => void) | null = null;
+
+    private autoSaveTimer: number = 0;
+    private static readonly AUTO_SAVE_INTERVAL = 30;
 
     constructor() {
         // Scene with fog
@@ -121,15 +125,68 @@ export class Game {
         document.addEventListener('mousedown', (e) => this.onMouseDown(e));
     }
 
+    private static readonly SAVE_KEY = 'voxelcraft_save';
+
+    loadGame(): boolean {
+        try {
+            const raw = localStorage.getItem(Game.SAVE_KEY);
+            if (!raw) return false;
+
+            const data = JSON.parse(raw);
+            const mods = new Map<string, number>(data.mods as [string, number][]);
+            this.world.setModifications(mods);
+
+            if (data.player) {
+                this.pendingPlayerPos = data.player;
+            }
+
+            if (this.onSaveStatus) this.onSaveStatus('Loaded');
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    private pendingPlayerPos: { x: number; y: number; z: number } | null = null;
+
+    saveGame(): void {
+        try {
+            const mods = Array.from(this.world.getModifications().entries());
+            const data = {
+                mods,
+                player: {
+                    x: this.player.position.x,
+                    y: this.player.position.y,
+                    z: this.player.position.z,
+                },
+            };
+            localStorage.setItem(Game.SAVE_KEY, JSON.stringify(data));
+            if (this.onSaveStatus) this.onSaveStatus(`Saved (${mods.length} blocks)`);
+        } catch {
+            if (this.onSaveStatus) this.onSaveStatus('Save failed');
+        }
+    }
+
     /** Initialize the game - load spawn area */
     init(): void {
-        // Load initial chunks synchronously (prevents falling through world)
-        this.chunkManager.initialLoad(0, 0);
+        this.loadGame();
 
-        // Find safe spawn height
-        this.findSafeSpawn();
+        const spawnX = this.pendingPlayerPos?.x ?? 0;
+        const spawnZ = this.pendingPlayerPos?.z ?? 0;
 
-        // Add renderer to DOM
+        this.chunkManager.initialLoad(Math.floor(spawnX), Math.floor(spawnZ));
+
+        if (this.pendingPlayerPos) {
+            this.player.teleport(
+                this.pendingPlayerPos.x,
+                this.pendingPlayerPos.y,
+                this.pendingPlayerPos.z
+            );
+            this.pendingPlayerPos = null;
+        } else {
+            this.findSafeSpawn();
+        }
+
         const app = document.getElementById('app');
         if (app) {
             app.appendChild(this.renderer.domElement);
@@ -192,6 +249,10 @@ export class Game {
                 this.playerView.toggleMode();
             }
 
+            if (this.controls.consumeSave()) {
+                this.saveGame();
+            }
+
             this.physics.update(this.player, moveDir, delta);
 
             const isMoving = moveDir.lengthSq() > 0.1;
@@ -211,6 +272,12 @@ export class Game {
         this.particles.update(delta);
         this.dayNight.update(delta);
         this.entityManager.update(delta, this.world, this.player.position, this.player.yaw, this.dayNight.isNight);
+
+        this.autoSaveTimer += delta;
+        if (this.autoSaveTimer >= Game.AUTO_SAVE_INTERVAL) {
+            this.autoSaveTimer = 0;
+            this.saveGame();
+        }
 
         this.playerView.update(delta, this.player);
 

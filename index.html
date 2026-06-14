@@ -86,6 +86,26 @@
       z-index: 50;
       pointer-events: none;
     }
+    #overlay .controls-grid {
+      display: grid;
+      grid-template-columns: auto auto;
+      gap: 4px 24px;
+      font-size: 0.85rem;
+      opacity: 0.85;
+      text-align: left;
+      max-width: 520px;
+    }
+    #overlay .controls-grid .key {
+      color: #ffd700;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+    #overlay .section-title {
+      color: #87CEEB;
+      font-size: 0.9rem;
+      margin-top: 1rem;
+      margin-bottom: 0.3rem;
+    }
   </style>
 </head>
 <body>
@@ -93,9 +113,27 @@
     <div id="overlay">
       <h1>VoxelCraft</h1>
       <p>Click to Play</p>
-      <div class="controls">
-        WASD — Move &nbsp;|&nbsp; Mouse — Look &nbsp;|&nbsp; Space — Jump<br>
-        Left Click — Break &nbsp;|&nbsp; Right Click — Place &nbsp;|&nbsp; 1-8 — Select Block
+      <div class="controls-grid">
+        <div class="section-title" style="grid-column:1/-1">이동 / 조작</div>
+        <span class="key">W A S D</span><span>이동</span>
+        <span class="key">Mouse</span><span>시점 이동</span>
+        <span class="key">Space</span><span>점프 / 수영 상승</span>
+        <span class="key">Left Click</span><span>블록 파괴 / 동물 공격</span>
+        <span class="key">Right Click</span><span>블록 설치</span>
+        <span class="key">1 – 8 / Wheel</span><span>핫바 블록 선택</span>
+
+        <div class="section-title" style="grid-column:1/-1">카메라 / 저장</div>
+        <span class="key">F</span><span>1인칭 / 3인칭 전환</span>
+        <span class="key">O</span><span>수동 저장 (30초마다 자동 저장)</span>
+        <span class="key">ESC</span><span>일시정지 (클릭 시 재개)</span>
+
+        <div class="section-title" style="grid-column:1/-1">월드 기능</div>
+        <span class="key">낮/밤</span><span>10분 주기 해/달 교차, 밤에 좀비 스폰</span>
+        <span class="key">바이옴</span><span>초원 · 사막 · 숲 · 산악 · 설원 (이동 시 변화)</span>
+        <span class="key">동굴</span><span>지하 y&lt;28 구간에 3D 노이즈 동굴</span>
+        <span class="key">광물</span><span>석탄 · 철 · 금 · 다이아몬드 (깊을수록 희귀)</span>
+        <span class="key">생존</span><span>체력 10칸 · 허기 · 낙하 데미지 · 익사</span>
+        <span class="key">동물</span><span>돼지 · 닭 (낮), 좀비 (밤) — 접근 시 도망 / 추격</span>
       </div>
     </div>
     <div id="crosshair"></div>

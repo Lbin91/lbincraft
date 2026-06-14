@@ -86,6 +86,20 @@ function setupDebug(): void {
             Chunks: ${stats.chunks}
         `;
     };
+
+    game.onSaveStatus = (message) => {
+        const existing = document.getElementById('save-toast');
+        if (existing) existing.remove();
+
+        const toast = document.createElement('div');
+        toast.id = 'save-toast';
+        toast.style.cssText = 'position:absolute;top:10px;right:10px;color:#aaffaa;font-size:0.85rem;text-shadow:1px 1px 2px black;z-index:60;pointer-events:none;opacity:1;transition:opacity 1s;';
+        toast.textContent = message;
+        document.getElementById('app')?.appendChild(toast);
+
+        setTimeout(() => { toast.style.opacity = '0'; }, 2000);
+        setTimeout(() => { toast.remove(); }, 3000);
+    };
 }
 
 function setupKeyboardShortcuts(): void {

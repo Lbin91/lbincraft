@@ -18,6 +18,7 @@ import {
 export class World {
     private chunks = new Map<string, Chunk>();
     private terrainGenerator: TerrainGenerator;
+    private modifications = new Map<string, number>();
 
     constructor(terrainGenerator: TerrainGenerator) {
         this.terrainGenerator = terrainGenerator;
@@ -35,6 +36,7 @@ export class World {
         if (!chunk) {
             chunk = new Chunk(cx, cz);
             this.terrainGenerator.generateChunk(chunk);
+            this.applyModifications(chunk);
             this.chunks.set(key, chunk);
         }
         return chunk;
@@ -96,8 +98,8 @@ export class World {
         const lx = worldToLocal(wx);
         const lz = worldToLocal(wz);
         chunk.setBlock(lx, wy, lz, id);
+        this.modifications.set(`${wx},${wy},${wz}`, id);
 
-        // Mark neighbor chunks dirty if on boundary (so their face culling updates)
         if (lx === 0) {
             const neighbor = this.getChunk(cx - 1, cz);
             neighbor?.markDirty();
@@ -130,5 +132,25 @@ export class World {
     isSolidAt(wx: number, wy: number, wz: number): boolean {
         const id = this.getBlock(wx, wy, wz);
         return isSolid(id);
+    }
+
+    private applyModifications(chunk: Chunk): void {
+        for (const [key, blockId] of this.modifications) {
+            const [wx, wy, wz] = key.split(',').map(Number);
+            const cx = worldToChunk(wx);
+            const cz = worldToChunk(wz);
+            if (cx !== chunk.cx || cz !== chunk.cz) continue;
+            const lx = worldToLocal(wx);
+            const lz = worldToLocal(wz);
+            chunk.setBlock(lx, wy, lz, blockId);
+        }
+    }
+
+    getModifications(): Map<string, number> {
+        return this.modifications;
+    }
+
+    setModifications(mods: Map<string, number>): void {
+        this.modifications = mods;
     }
 }

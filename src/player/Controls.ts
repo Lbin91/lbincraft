@@ -102,6 +102,14 @@ export class Controls {
         return false;
     }
 
+    consumeSave(): boolean {
+        if (this.keys['KeyO']) {
+            this.keys['KeyO'] = false;
+            return true;
+        }
+        return false;
+    }
+
     /** Get the horizontal movement direction in world space */
     getMoveDirection(): THREE.Vector3 {
         const { forward, right } = this.getMoveInput();
