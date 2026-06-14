@@ -17,13 +17,10 @@ export enum BlockId {
 export interface BlockType {
     id: BlockId;
     name: string;
-    /** Whether light passes through (affects face culling) */
     transparent: boolean;
-    /** Whether the block is solid (affects collision) */
     solid: boolean;
-    /** Whether the block can be broken by the player */
     breakable: boolean;
-    /** Colors for each face: [top, bottom, north, south, east, west] */
+    affectedByGravity: boolean;
     colors: {
         top: string;
         bottom: string;
@@ -33,75 +30,39 @@ export interface BlockType {
 
 const BLOCK_DEFINITIONS: Record<BlockId, BlockType> = {
     [BlockId.Air]: {
-        id: BlockId.Air,
-        name: 'Air',
-        transparent: true,
-        solid: false,
-        breakable: false,
+        id: BlockId.Air, name: 'Air', transparent: true, solid: false, breakable: false, affectedByGravity: false,
         colors: { top: '#000000', bottom: '#000000', side: '#000000' },
     },
     [BlockId.Grass]: {
-        id: BlockId.Grass,
-        name: 'Grass',
-        transparent: false,
-        solid: true,
-        breakable: true,
+        id: BlockId.Grass, name: 'Grass', transparent: false, solid: true, breakable: true, affectedByGravity: false,
         colors: { top: '#5fb84f', bottom: '#8b6240', side: '#7a9e4f' },
     },
     [BlockId.Dirt]: {
-        id: BlockId.Dirt,
-        name: 'Dirt',
-        transparent: false,
-        solid: true,
-        breakable: true,
+        id: BlockId.Dirt, name: 'Dirt', transparent: false, solid: true, breakable: true, affectedByGravity: false,
         colors: { top: '#8b6240', bottom: '#8b6240', side: '#8b6240' },
     },
     [BlockId.Stone]: {
-        id: BlockId.Stone,
-        name: 'Stone',
-        transparent: false,
-        solid: true,
-        breakable: true,
+        id: BlockId.Stone, name: 'Stone', transparent: false, solid: true, breakable: true, affectedByGravity: false,
         colors: { top: '#888888', bottom: '#888888', side: '#888888' },
     },
     [BlockId.Wood]: {
-        id: BlockId.Wood,
-        name: 'Wood',
-        transparent: false,
-        solid: true,
-        breakable: true,
+        id: BlockId.Wood, name: 'Wood', transparent: false, solid: true, breakable: true, affectedByGravity: false,
         colors: { top: '#a0784a', bottom: '#a0784a', side: '#6b4f2a' },
     },
     [BlockId.Leaves]: {
-        id: BlockId.Leaves,
-        name: 'Leaves',
-        transparent: true,
-        solid: true,
-        breakable: true,
+        id: BlockId.Leaves, name: 'Leaves', transparent: true, solid: true, breakable: true, affectedByGravity: false,
         colors: { top: '#3a8a2a', bottom: '#3a8a2a', side: '#3a8a2a' },
     },
     [BlockId.Sand]: {
-        id: BlockId.Sand,
-        name: 'Sand',
-        transparent: false,
-        solid: true,
-        breakable: true,
+        id: BlockId.Sand, name: 'Sand', transparent: false, solid: true, breakable: true, affectedByGravity: true,
         colors: { top: '#e6d8a0', bottom: '#e6d8a0', side: '#e6d8a0' },
     },
     [BlockId.Water]: {
-        id: BlockId.Water,
-        name: 'Water',
-        transparent: true,
-        solid: false,
-        breakable: false,
+        id: BlockId.Water, name: 'Water', transparent: true, solid: false, breakable: false, affectedByGravity: false,
         colors: { top: '#3b6ea8', bottom: '#3b6ea8', side: '#3b6ea8' },
     },
     [BlockId.Bedrock]: {
-        id: BlockId.Bedrock,
-        name: 'Bedrock',
-        transparent: false,
-        solid: true,
-        breakable: false,
+        id: BlockId.Bedrock, name: 'Bedrock', transparent: false, solid: true, breakable: false, affectedByGravity: false,
         colors: { top: '#333333', bottom: '#333333', side: '#333333' },
     },
 };
@@ -120,6 +81,10 @@ export function isSolid(id: BlockId): boolean {
 
 export function isBreakable(id: BlockId): boolean {
     return BLOCK_DEFINITIONS[id]?.breakable ?? false;
+}
+
+export function isAffectedByGravity(id: BlockId): boolean {
+    return BLOCK_DEFINITIONS[id]?.affectedByGravity ?? false;
 }
 
 /** Blocks available in the hotbar (excluding Air) */

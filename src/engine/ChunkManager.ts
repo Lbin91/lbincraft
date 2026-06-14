@@ -8,10 +8,12 @@ import { World } from './World';
 import { Chunk } from './Chunk';
 import { buildChunkMesh } from './MeshBuilder';
 import { worldToChunk } from '../utils/math';
+import { isAffectedByGravity } from '../blocks/BlockType';
 
-const RENDER_RADIUS = 4; // Chunks loaded in each direction from player
-const SPAWN_RADIUS = 2; // Initial synchronous load radius
+const RENDER_RADIUS = 4;
+const SPAWN_RADIUS = 2;
 const MAX_MESH_BUILDS_PER_FRAME = 3;
+const MAX_FALLS_PER_FRAME = 10;
 
 export class ChunkManager {
     private world: World;
@@ -20,10 +22,9 @@ export class ChunkManager {
     private lastPlayerChunkX = Infinity;
     private lastPlayerChunkZ = Infinity;
 
-    // Queue of chunks needing mesh rebuild
     private dirtyQueue: Chunk[] = [];
-    // Queue of chunks needing initial load
     private loadQueue: { cx: number; cz: number }[] = [];
+    private fallQueue: Set<string> = new Set();
 
     constructor(world: World, scene: THREE.Scene) {
         this.world = world;
@@ -58,11 +59,9 @@ export class ChunkManager {
             this.lastPlayerChunkZ = ccz;
         }
 
-        // Process load queue (load a few chunks per frame)
         this.processLoadQueue();
-
-        // Process dirty chunks (rebuild meshes)
         this.processDirtyQueue();
+        this.processFallQueue();
     }
 
     /** Load/unload chunks based on new player position */
@@ -173,13 +172,50 @@ export class ChunkManager {
         }
     }
 
-    /** Get all chunks that need rebuild */
     markDirtyAt(worldX: number, _worldY: number, worldZ: number): void {
         const cx = worldToChunk(worldX);
         const cz = worldToChunk(worldZ);
         const chunk = this.world.getChunk(cx, cz);
         if (chunk) {
             this.markDirty(chunk);
+        }
+        this.queueFallCheck(worldX, _worldY + 1, worldZ);
+    }
+
+    queueFallCheck(x: number, y: number, z: number): void {
+        this.fallQueue.add(`${x},${y},${z}`);
+    }
+
+    private processFallQueue(): void {
+        let processed = 0;
+        const entries = Array.from(this.fallQueue);
+        this.fallQueue.clear();
+
+        for (const entry of entries) {
+            if (processed >= MAX_FALLS_PER_FRAME) {
+                this.fallQueue.add(entry);
+                continue;
+            }
+
+            const [x, y, z] = entry.split(',').map(Number);
+            const blockId = this.world.getBlock(x, y, z);
+
+            if (!isAffectedByGravity(blockId)) continue;
+
+            const belowId = this.world.getBlock(x, y - 1, z);
+            if (belowId !== 0) continue;
+
+            const targetChunk = this.world.getChunk(worldToChunk(x), worldToChunk(z));
+            if (!targetChunk) continue;
+
+            this.world.setBlock(x, y, z, 0);
+            this.world.setBlock(x, y - 1, z, blockId);
+            this.markDirtyAt(x, y, z);
+            this.markDirtyAt(x, y - 1, z);
+
+            this.queueFallCheck(x, y - 1, z);
+            this.queueFallCheck(x, y + 1, z);
+            processed++;
         }
     }
 }
