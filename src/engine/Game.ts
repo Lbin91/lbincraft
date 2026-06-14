@@ -20,6 +20,7 @@ import { Survival } from '../player/Survival';
 import { EntityManager } from '../entities/EntityManager';
 import { PlayerView } from '../player/PlayerView';
 import { AudioManager } from '../audio/AudioManager';
+import { Minimap } from '../ui/Minimap';
 
 export class Game {
     scene: THREE.Scene;
@@ -40,6 +41,7 @@ export class Game {
     entityManager: EntityManager;
     playerView: PlayerView;
     audio: AudioManager;
+    minimap: Minimap;
 
     selectedSlot: number = 0;
 
@@ -114,6 +116,7 @@ export class Game {
         this.physics = new Physics(this.world);
         this.particles = new ParticleManager(this.scene);
         this.audio = new AudioManager();
+        this.minimap = new Minimap();
         this.inventory = new Inventory();
         this.inventory.fillCreative(HOTBAR_BLOCKS);
         this.survival = new Survival();
@@ -307,6 +310,8 @@ export class Game {
         this.playerView.update(delta, this.player);
 
         this.updateBlockHighlight();
+
+        this.minimap.update(delta, this.player.position.x, this.player.position.z, this.player.yaw, this.world);
 
         this.renderer.render(this.scene, this.camera);
 

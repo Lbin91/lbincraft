@@ -18,6 +18,7 @@ setupOverlay();
 setupDebug();
 setupKeyboardShortcuts();
 setupContextMenu();
+setupMinimap();
 
 // Start game loop
 game.start();
@@ -131,6 +132,11 @@ function setupKeyboardShortcuts(): void {
 }
 
 function setupContextMenu(): void {
-    // Prevent right-click context menu (so we can use right-click for block placement)
     document.addEventListener('contextmenu', (e) => e.preventDefault());
+}
+
+function setupMinimap(): void {
+    const app = document.getElementById('app');
+    if (!app) return;
+    app.appendChild(game.minimap.getCanvas());
 }
