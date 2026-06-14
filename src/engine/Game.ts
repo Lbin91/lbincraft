@@ -13,6 +13,8 @@ import { Player } from '../player/Player';
 import { Controls } from '../player/Controls';
 import { Physics } from '../player/Physics';
 import { BlockId, HOTBAR_BLOCKS, isBreakable, getBlockType } from '../blocks/BlockType';
+import { ParticleManager } from '../effects/ParticleManager';
+import { DayNightCycle } from './DayNightCycle';
 
 export class Game {
     scene: THREE.Scene;
@@ -26,9 +28,13 @@ export class Game {
     player: Player;
     controls: Controls;
     physics: Physics;
+    particles: ParticleManager;
+    dayNight: DayNightCycle;
 
     // Hotbar state
     selectedSlot: number = 0;
+
+    private blockHighlight: THREE.LineSegments;
 
     // FPS tracking
     private fps: number = 0;
@@ -71,6 +77,17 @@ export class Game {
         directionalLight.position.set(50, 100, 50);
         this.scene.add(directionalLight);
 
+        this.dayNight = new DayNightCycle(this.scene, directionalLight, ambientLight);
+
+        const boxGeo = new THREE.BoxGeometry(1.002, 1.002, 1.002);
+        const edges = new THREE.EdgesGeometry(boxGeo);
+        this.blockHighlight = new THREE.LineSegments(
+            edges,
+            new THREE.LineBasicMaterial({ color: 0x000000 })
+        );
+        this.blockHighlight.visible = false;
+        this.scene.add(this.blockHighlight);
+
         // World
         this.terrainGenerator = new TerrainGenerator(12345);
         this.world = new World(this.terrainGenerator);
@@ -80,6 +97,7 @@ export class Game {
         this.player = new Player(0.5, 50, 0.5);
         this.controls = new Controls(this.player, this.renderer.domElement);
         this.physics = new Physics(this.world);
+        this.particles = new ParticleManager(this.scene);
 
         // Clock
         this.clock = new THREE.Clock();
@@ -170,6 +188,9 @@ export class Game {
             Math.floor(this.player.position.z)
         );
 
+        this.particles.update(delta);
+        this.dayNight.update(delta);
+
         // Update camera from player
         const eyePos = this.player.getEyePosition();
         this.camera.position.copy(eyePos);
@@ -177,7 +198,8 @@ export class Game {
         this.camera.rotation.y = this.player.yaw;
         this.camera.rotation.x = this.player.pitch;
 
-        // Render
+        this.updateBlockHighlight();
+
         this.renderer.render(this.scene, this.camera);
 
         // FPS tracking
@@ -200,6 +222,23 @@ export class Game {
             }
         }
     };
+
+    private updateBlockHighlight(): void {
+        const eyePos = this.player.getEyePosition();
+        const dir = this.player.getLookDirection();
+        const result = raycastVoxel(eyePos, dir, 6, this.world);
+
+        if (result.hit) {
+            this.blockHighlight.visible = true;
+            this.blockHighlight.position.set(
+                result.block.x + 0.5,
+                result.block.y + 0.5,
+                result.block.z + 0.5
+            );
+        } else {
+            this.blockHighlight.visible = false;
+        }
+    }
 
     /** Handle mouse clicks for block break/place */
     private onMouseDown(e: MouseEvent): void {
@@ -227,8 +266,9 @@ export class Game {
     /** Break a block at world coordinates */
     private breakBlock(x: number, y: number, z: number): void {
         const blockId = this.world.getBlock(x, y, z);
-        if (!isBreakable(blockId)) return; // Can't break bedrock/water
+        if (!isBreakable(blockId)) return;
 
+        this.particles.spawnBlockBreak(x, y, z, blockId as BlockId);
         this.world.setBlock(x, y, z, BlockId.Air);
         this.chunkManager.markDirtyAt(x, y, z);
     }
@@ -276,6 +316,7 @@ export class Game {
     /** Clean up resources */
     dispose(): void {
         this.running = false;
+        this.particles.dispose();
         this.renderer.dispose();
         disposeMaterials();
     }
