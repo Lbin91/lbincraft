@@ -16,6 +16,7 @@ import { BlockId, HOTBAR_BLOCKS, isBreakable, getBlockType } from '../blocks/Blo
 import { ParticleManager } from '../effects/ParticleManager';
 import { DayNightCycle } from './DayNightCycle';
 import { Inventory } from '../inventory/Inventory';
+import { Survival } from '../player/Survival';
 
 export class Game {
     scene: THREE.Scene;
@@ -32,6 +33,7 @@ export class Game {
     particles: ParticleManager;
     dayNight: DayNightCycle;
     inventory: Inventory;
+    survival: Survival;
 
     selectedSlot: number = 0;
 
@@ -101,6 +103,7 @@ export class Game {
         this.particles = new ParticleManager(this.scene);
         this.inventory = new Inventory();
         this.inventory.fillCreative(HOTBAR_BLOCKS);
+        this.survival = new Survival();
 
         // Clock
         this.clock = new THREE.Clock();
@@ -181,8 +184,14 @@ export class Game {
                 this.physics.jump(this.player);
             }
 
-            // Update physics
             this.physics.update(this.player, moveDir, delta);
+
+            const isMoving = moveDir.lengthSq() > 0.1;
+            this.survival.update(delta, this.player, this.world, isMoving);
+
+            if (this.survival.isDead) {
+                this.handleDeath();
+            }
         }
 
         // Update chunks based on player position
@@ -241,6 +250,11 @@ export class Game {
         } else {
             this.blockHighlight.visible = false;
         }
+    }
+
+    private handleDeath(): void {
+        this.survival.respawn();
+        this.findSafeSpawn();
     }
 
     /** Handle mouse clicks for block break/place */
