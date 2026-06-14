@@ -19,6 +19,7 @@ import { Inventory } from '../inventory/Inventory';
 import { Survival } from '../player/Survival';
 import { EntityManager } from '../entities/EntityManager';
 import { PlayerView } from '../player/PlayerView';
+import { AudioManager } from '../audio/AudioManager';
 
 export class Game {
     scene: THREE.Scene;
@@ -38,6 +39,7 @@ export class Game {
     survival: Survival;
     entityManager: EntityManager;
     playerView: PlayerView;
+    audio: AudioManager;
 
     selectedSlot: number = 0;
 
@@ -58,6 +60,8 @@ export class Game {
 
     private autoSaveTimer: number = 0;
     private static readonly AUTO_SAVE_INTERVAL = 30;
+    private footstepTimer: number = 0;
+    private wasNight: boolean = false;
 
     constructor() {
         // Scene with fog
@@ -109,6 +113,7 @@ export class Game {
         this.controls = new Controls(this.player, this.renderer.domElement);
         this.physics = new Physics(this.world);
         this.particles = new ParticleManager(this.scene);
+        this.audio = new AudioManager();
         this.inventory = new Inventory();
         this.inventory.fillCreative(HOTBAR_BLOCKS);
         this.survival = new Survival();
@@ -122,6 +127,11 @@ export class Game {
         window.addEventListener('resize', () => this.onResize());
 
         // Handle mouse clicks for block interaction
+        document.addEventListener('mousedown', () => {
+            this.audio.init();
+            this.audio.startDayAmbient();
+        }, { once: true });
+
         document.addEventListener('mousedown', (e) => this.onMouseDown(e));
     }
 
@@ -258,6 +268,12 @@ export class Game {
             const isMoving = moveDir.lengthSq() > 0.1;
             this.survival.update(delta, this.player, this.world, isMoving);
 
+            this.footstepTimer += delta;
+            if (isMoving && this.footstepTimer >= 0.35) {
+                this.footstepTimer = 0;
+                this.audio.playFootstep();
+            }
+
             if (this.survival.isDead) {
                 this.handleDeath();
             }
@@ -271,6 +287,15 @@ export class Game {
 
         this.particles.update(delta);
         this.dayNight.update(delta);
+
+        if (this.dayNight.isNight && !this.wasNight) {
+            this.audio.startNightAmbient();
+            this.wasNight = true;
+        } else if (!this.dayNight.isNight && this.wasNight) {
+            this.audio.startDayAmbient();
+            this.wasNight = false;
+        }
+
         this.entityManager.update(delta, this.world, this.player.position, this.player.yaw, this.dayNight.isNight);
 
         this.autoSaveTimer += delta;
@@ -359,6 +384,7 @@ export class Game {
         this.world.setBlock(x, y, z, BlockId.Air);
         this.chunkManager.markDirtyAt(x, y, z);
         this.inventory.addItem(blockId, 1);
+        this.audio.playBlockBreak(blockId);
     }
 
     private placeBlock(x: number, y: number, z: number): void {
@@ -372,6 +398,7 @@ export class Game {
         this.world.setBlock(x, y, z, stack.itemId);
         this.chunkManager.markDirtyAt(x, y, z);
 
+        this.audio.playBlockPlace(stack.itemId);
         stack.count--;
         if (stack.count <= 0) {
             this.inventory.hotbar[this.inventory.selectedSlot] = null;

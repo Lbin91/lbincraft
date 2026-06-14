@@ -104,10 +104,18 @@ function setupDebug(): void {
 
 function setupKeyboardShortcuts(): void {
     window.addEventListener('keydown', (e) => {
-        // Number keys 1-8 for hotbar selection
         const num = parseInt(e.key);
         if (num >= 1 && num <= 8) {
             selectSlot(num - 1);
+        }
+
+        if (e.key === 'm' || e.key === 'M') {
+            const enabled = game.audio.toggleMute();
+            const toast = document.createElement('div');
+            toast.style.cssText = 'position:absolute;top:50px;left:50%;transform:translateX(-50%);color:#fff;font-size:0.9rem;background:rgba(0,0,0,0.7);padding:4px 12px;border-radius:4px;z-index:100;';
+            toast.textContent = enabled ? '🔊 Sound On' : '🔇 Muted';
+            document.getElementById('app')?.appendChild(toast);
+            setTimeout(() => toast.remove(), 1500);
         }
     });
 
