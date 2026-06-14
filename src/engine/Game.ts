@@ -15,6 +15,7 @@ import { Physics } from '../player/Physics';
 import { BlockId, HOTBAR_BLOCKS, isBreakable, getBlockType } from '../blocks/BlockType';
 import { ParticleManager } from '../effects/ParticleManager';
 import { DayNightCycle } from './DayNightCycle';
+import { Inventory } from '../inventory/Inventory';
 
 export class Game {
     scene: THREE.Scene;
@@ -30,8 +31,8 @@ export class Game {
     physics: Physics;
     particles: ParticleManager;
     dayNight: DayNightCycle;
+    inventory: Inventory;
 
-    // Hotbar state
     selectedSlot: number = 0;
 
     private blockHighlight: THREE.LineSegments;
@@ -98,6 +99,8 @@ export class Game {
         this.controls = new Controls(this.player, this.renderer.domElement);
         this.physics = new Physics(this.world);
         this.particles = new ParticleManager(this.scene);
+        this.inventory = new Inventory();
+        this.inventory.fillCreative(HOTBAR_BLOCKS);
 
         // Clock
         this.clock = new THREE.Clock();
@@ -263,7 +266,6 @@ export class Game {
         }
     }
 
-    /** Break a block at world coordinates */
     private breakBlock(x: number, y: number, z: number): void {
         const blockId = this.world.getBlock(x, y, z);
         if (!isBreakable(blockId)) return;
@@ -271,22 +273,24 @@ export class Game {
         this.particles.spawnBlockBreak(x, y, z, blockId as BlockId);
         this.world.setBlock(x, y, z, BlockId.Air);
         this.chunkManager.markDirtyAt(x, y, z);
+        this.inventory.addItem(blockId, 1);
     }
 
-    /** Place a block at world coordinates */
     private placeBlock(x: number, y: number, z: number): void {
-        // Safety: can't place below Y=0
         if (y < 1) return;
-
-        // Safety: can't place where a block already exists
         if (this.world.getBlock(x, y, z) !== BlockId.Air) return;
-
-        // Safety: don't place block inside player
         if (this.checkPlayerOverlap(x, y, z)) return;
 
-        const blockId = HOTBAR_BLOCKS[this.selectedSlot];
-        this.world.setBlock(x, y, z, blockId);
+        const stack = this.inventory.getSelectedStack();
+        if (!stack || stack.count <= 0) return;
+
+        this.world.setBlock(x, y, z, stack.itemId);
         this.chunkManager.markDirtyAt(x, y, z);
+
+        stack.count--;
+        if (stack.count <= 0) {
+            this.inventory.hotbar[this.inventory.selectedSlot] = null;
+        }
     }
 
     /** Check if placing a block at position would overlap the player */
@@ -306,11 +310,9 @@ export class Game {
         this.renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
-    /** Select hotbar slot */
     selectSlot(index: number): void {
-        if (index >= 0 && index < HOTBAR_BLOCKS.length) {
-            this.selectedSlot = index;
-        }
+        this.inventory.selectSlot(index);
+        this.selectedSlot = this.inventory.selectedSlot;
     }
 
     /** Clean up resources */
