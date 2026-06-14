@@ -83,10 +83,33 @@ generateChunk(chunk):
         // 나무 생성 시 biome.treeDensity 사용
 ```
 
-### 바이옴 블렌딩 (경계 처리)
+### 바이옴 블렌딩 (★ Oracle 검토 반영 - Bilinear Interpolation)
 
-- 단일 픽셀이 아닌 주변 바이옴을 평균하여 경계를 부드럽게
-- 또는 단순히 청크 경계에서만 바이옴 결정 (청크 내 동일 바이옴)
+경계에서 절벽이 생기지 않도록 연속 파라미터를 보간:
+
+```
+getBlendedBiomeParams(wx, wz):
+  // 주변 4개 샘플링 포인트의 바이옴 파라미터를 가중 평균
+  const samples = [
+    { x: floor(wx/8)*8, z: floor(wz/8)*8 },
+    { x: ceil(wx/8)*8,  z: floor(wz/8)*8 },
+    { x: floor(wx/8)*8, z: ceil(wz/8)*8 },
+    { x: ceil(wx/8)*8,  z: ceil(wz/8)*8 },
+  ]
+  // 각 샘플 포인트의 baseHeight, amplitude를 bilinear 가중 평균
+  → 부드러운 지형 높이 전환
+```
+
+### 추가 블록 (★ Oracle 검토 반영)
+
+```typescript
+// BlockType.ts에 추가
+export enum BlockId {
+    // 기존...
+    Snow = 9,     // 설원 표면 (흰색)
+    Ice = 10,     // 얼어붙은 물 (반투명 파랑)
+}
+```
 
 ## 의존성
 - 없음

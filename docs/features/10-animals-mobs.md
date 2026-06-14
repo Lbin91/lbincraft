@@ -27,12 +27,13 @@
 - `src/entities/Pig.ts` — 돼지 (고기 드롭)
 - `src/entities/Chicken.ts` — 닭 (알, 낮은 점프)
 - `src/entities/Zombie.ts` — 좀비 (추적 AI, 밤 스폰)
-- `src/entities/MeshBuilder.ts` — 박스 기반 엔티티 메시 생성
+- `src/entities/EntityMeshBuilder.ts` — 박스 기반 엔티티 메시 생성
 
 ### 수정 파일
 - `src/engine/Game.ts` — EntityManager 통합, 스폰 로직
 - `src/engine/DayNightCycle.ts` (Feature 03) — 밤 좀비 스폰 트리거
 - `src/player/Survival.ts` (Feature 09) — 몹 공격 데미지
+- `src/player/Physics.ts` — **범용화: `moveEntity(entity, width, height, world)` 정적 메서드 추가** (★ Oracle 검토 반영)
 
 ### 데이터 구조
 
@@ -188,6 +189,23 @@ spawnAnimalNearPlayer(player, world):
           spawn entity at (x+0.5, y+1, z+0.5)
           return
 ```
+
+## 엔티티 애니메이션 (★ Oracle 검토 반영)
+
+박스 파트를 별도 Mesh로 분리하여 최소한의 걷기 애니메이션 구현:
+
+```
+walkCycle += delta * moveSpeed * 8
+
+leftFrontLeg.rotation.x = Math.sin(walkCycle) * 0.5
+rightFrontLeg.rotation.x = -Math.sin(walkCycle) * 0.5
+leftBackLeg.rotation.x = -Math.sin(walkCycle) * 0.5
+rightBackLeg.rotation.x = Math.sin(walkCycle) * 0.5
+```
+
+## 스폰 시야 처리 (★ Oracle 검토 반영)
+
+플레이어 시선 방향 ±60도 이내 스폰 금지 → 뒤쪽이나 측면에서 스폰.
 
 ## 의존성
 - **Feature 03 (Day/Night)**: 밤 좀비 스폰 트리거

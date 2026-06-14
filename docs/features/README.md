@@ -46,3 +46,18 @@
 3. **브라우저 검증**: 각 기능 구현 후 Playwright로 동작 확인
 4. **타입 안정성**: `as any` / `@ts-ignore` 금지
 5. **성능 유지**: 모든 기능 추가 후 60fps 유지
+
+## Oracle 검토 반영 (피드백 수용 결과)
+
+| Feature | 수용 항목 | 연기 항목 |
+|---------|----------|----------|
+| #01 | 성능 근거 표현 수정 | - |
+| #02 | `transparent`/`depthWrite` 추가, 상한 100 | InstancedMesh 전환 |
+| #03 | In-place Color 갱신 가이드 | - |
+| #04 | 언로드 청크 가드, markDirty 호출 | - |
+| #05 | 별도 PRNG 인스턴스 | - |
+| #06 | Snow/Ice 블록, Bilinear blending | - |
+| #07 | ItemId 타입, HOTBAR 마이그레이션 | Crafting 회전 매칭 |
+| #08 | 결정론적 광물 생성, ItemId | - |
+| #09 | 물 감지 로직, Y기반 낙하 추적 | 수영 물리 정교화 |
+| #10 | Physics 범용화, 기본 애니메이션 | InstancedMesh 드로우 콜 |

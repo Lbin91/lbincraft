@@ -29,24 +29,47 @@
 - `src/main.ts` — 인벤토리 UI 통합
 - `index.html` — 인벤토리/크래프팅 오버레이 HTML/CSS
 
-### 데이터 구조
+### 데이터 구조 (★ Oracle 검토 반영: ItemId 타입 시스템)
 
 ```typescript
-// Inventory.ts
+// ItemId = BlockId의 상위집합 (블록 + 비블록 아이템)
+export type ItemId = BlockId | number;  // 0-255: BlockId, 256+: Items
+
+export const Items = {
+    IronIngot: 256,
+    GoldIngot: 257,
+    Coal: 258,
+    Apple: 259,
+    Stick: 260,
+} as const;
+
 interface ItemStack {
-    blockId: BlockId;
-    count: number;       // 최대 64
+    itemId: ItemId;       // BlockId 또는 Item ID (Oracle: blockId → itemId 확장)
+    count: number;        // 최대 64
 }
 
 class Inventory {
     slots: (ItemStack | null)[];  // 27개 슬롯
-    hotbar: (ItemStack | null)[]; // 9개 슬롯 (기존 hotbar 대체)
+    hotbar: (ItemStack | null)[]; // 9개 슬롯
 
-    addItem(blockId: BlockId, count: number = 1): boolean;
-    removeItem(blockId: BlockId, count: number = 1): boolean;
-    getItemCount(blockId: BlockId): number;
-    moveToSlot(from: number, to: number): void;
+    addItem(itemId: ItemId, count: number = 1): boolean;
+    removeItem(itemId: ItemId, count: number = 1): boolean;
+    getItemCount(itemId: ItemId): number;
 }
+```
+
+### HOTBAR_BLOCKS 마이그레이션 (★ Oracle 검토 반영)
+
+기존 `HOTBAR_BLOCKS[selectedSlot]`를 `inventory.hotbar[selectedSlot]?.itemId`로 전환:
+
+| 파일 | 기존 코드 | 변경 후 |
+|------|---------|--------|
+| `Game.placeBlock` | `HOTBAR_BLOCKS[this.selectedSlot]` | `this.inventory.hotbar[this.selectedSlot]?.itemId` |
+| `Game.selectSlot` | `HOTBAR_BLOCKS.length` 범위 체크 | `this.inventory.hotbar.length` |
+| `main.ts setupHotbar` | `HOTBAR_BLOCKS.forEach` | `inventory.hotbar` 기반 렌더링 |
+| `main.ts keyboard` | 숫자키 1-8 | `inventory.hotbar.length` 기반 |
+
+초기 상태: 크리에이티브 모드 유지 (모든 블록 핫바에 미리 채움)
 
 // Recipe.ts
 interface Recipe {

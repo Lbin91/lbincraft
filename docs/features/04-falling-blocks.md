@@ -73,8 +73,17 @@ ChunkManager.update() 내에서 낙하 처리 (매 프레임):
 ### 성능 고려사항
 
 - 프레임당 최대 10개 블록 낙하 처리 (대규모 붕괴 시 프레임 드랍 방지)
-- fallCheckQueue 중복 제거 (Set 또는 체크)
+- fallCheckQueue 중복 제거: `Set<string>` 사용, 키 = `"x,y,z"`
 - 일반 블록은 낙하 체크 스킵 (affectedByGravity=false)
+
+### 안전장치 (★ Oracle 검토 반영)
+
+- **언로드 청크 가드 (치명적)**: 낙하 전 목적지 청크 로드 확인
+  ```typescript
+  const targetChunk = world.getChunk(worldToChunk(x), worldToChunk(z));
+  if (!targetChunk) continue; // 언로드된 청크로 낙하 시도 금지 → 블록 소실 방지
+  ```
+- **markDirty 호출 필수**: `world.setBlock` 후 `chunkManager.markDirtyAt(x, y, z)` 및 `markDirtyAt(x, y-1, z)` 호출 — 메시 갱신 누락 방지
 
 ## 의존성
 - 없음

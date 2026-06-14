@@ -67,8 +67,16 @@ class ParticleManager {
 ### 성능 고려사항
 
 - Geometry 공유 (하나의 BoxGeometry를 모든 파티클이 재사용, 각자 Material)
-- 최대 파티클 수 제한 (예: 200개 초과 시 가장 오래된 것 제거)
-- 각 파티클은 독립 Mesh (인스턴싱은 오버엔지니어링, 파티클 수가 적음)
+- **파티클 Material 설정 (★ 검토 반영)**:
+  ```typescript
+  new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,   // opacity 렌더링에 필수
+      depthWrite: false,    // z-fighting 방지
+  })
+  ```
+- 최대 파티클 수 제한: **100개** (Oracle 검토 반영, 200→100 하향)
+- 각 파티클은 독립 Mesh (인스턴싱은 Phase 2 최적화)
 
 ## 의존성
 - 없음 (독립 구현 가능)

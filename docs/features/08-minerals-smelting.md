@@ -80,7 +80,7 @@ const SMELTING_RECIPES: Map<BlockId, { output: BlockId; cookTime: number }> = ne
 ]);
 ```
 
-### 광물 생성 로직
+### 광물 생성 로직 (★ Oracle 검토 반영: 결정론적 생성)
 
 ```
 generateChunk(chunk):
@@ -88,19 +88,28 @@ generateChunk(chunk):
   for each Stone 블록 (x, y, z):
     for each ore in ORE_DISTRIBUTIONS:
       if y < ore.minY || y > ore.maxY: continue
-      if Math.random() < ore.rarity:
+      // 결정론적 hash 사용 (Math.random 금지 — 월드 재현성)
+      const wx = chunk.cx * 16 + x
+      const wz = chunk.cz * 16 + z
+      const hash = ((wx * 374761393) ^ (y * 668265263) ^ (wz * 2147483647)) >>> 0
+      if (hash % 10000) / 10000 < ore.rarity:
         generateOreVein(chunk, x, y, z, ore)
 
 generateOreVein(chunk, x, y, z, ore):
-  // 브레드크러스트 DFS로 주변 Stone을 광석으로 변환
   size = random(1, ore.veinSize)
   for i in 0..size:
     nx = x + random(-1, 1)
     ny = y + random(-1, 1)
     nz = z + random(-1, 1)
-    if chunk.getBlock(nx, ny, nz) === Stone:
+    if chunk.getBlock(nx, ny, nz) === Stone:  // 현재 청크 내에서만 (경계 클리핑 수용)
       chunk.setBlock(nx, ny, nz, ore.blockId)
 ```
+
+### 아이템 타입 (★ Oracle 검토 반영: Feature 07 ItemId 사용)
+
+- IronIngot, GoldIngot, Coal, Glass는 BlockId가 아닌 `ItemId` 사용
+- `SMELTING_RECIPES`의 output은 `ItemId` 타입
+- 화로 UI에서 ItemId 표시 (블록이 아닌 아이템 렌더링)
 
 ### 화로 제련 로직
 

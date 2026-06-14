@@ -71,18 +71,33 @@ interface FoodItem {
 }
 ```
 
-### 로직
+### 로직 (★ Oracle 검토 반영: 물 감지 + Y기반 낙하 추정)
 
 ```
-Physics.update 후:
-  // 낙하 거리 추적
-  if player.velocity.y < 0 && !player.onGround:
-    fallDistance += -player.velocity.y * delta
-  elif player.onGround:
-    if fallDistance > 3:  // 3블록 이상 낙하 시 데미지
-      damage = Math.floor(fallDistance - 3)
+물 감지 (★ Oracle 검토 반영):
+  // 플레이어 눈높이 블록이 물인지 확인
+  const eyeBlock = world.getBlock(
+      floor(player.position.x),
+      floor(player.position.y + 0.9),
+      floor(player.position.z)
+  );
+  const inWater = (eyeBlock === BlockId.Water);
+
+  // 물 속에서 중력 감소 (부력 시뮬레이션)
+  if (inWater):
+    player.velocity.y = max(player.velocity.y - 3 * delta, -3)  // 느린 침강
+    // Space키로 상승
+    if controls.isJumping():
+      player.velocity.y = 4  // 수영 상승
+
+낙하 거리 추적 (★ Y 위치 기반으로 변경 — 기존 velocity 방식은 서브스텝으로 깨짐):
+  if player.onGround:
+    if fallPeakY - player.position.y > 3:  // 3블록 이상 낙하
+      damage = floor(fallPeakY - player.position.y - 3)
       survival.takeDamage(damage, DamageSource.Fall)
-    fallDistance = 0
+    fallPeakY = player.position.y
+  else:
+    fallPeakY = max(fallPeakY, player.position.y)
 
 Survival.update(delta):
   // 허기 자연 소모 (이동 시)
