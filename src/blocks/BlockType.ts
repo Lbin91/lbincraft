@@ -14,6 +14,10 @@ export enum BlockId {
     Bedrock = 8,
     Snow = 9,
     Ice = 10,
+    CoalOre = 11,
+    IronOre = 12,
+    GoldOre = 13,
+    DiamondOre = 14,
 }
 
 export interface BlockType {
@@ -74,6 +78,22 @@ const BLOCK_DEFINITIONS: Record<BlockId, BlockType> = {
     [BlockId.Ice]: {
         id: BlockId.Ice, name: 'Ice', transparent: true, solid: true, breakable: true, affectedByGravity: false,
         colors: { top: '#8fc4e8', bottom: '#8fc4e8', side: '#8fc4e8' },
+    },
+    [BlockId.CoalOre]: {
+        id: BlockId.CoalOre, name: 'Coal Ore', transparent: false, solid: true, breakable: true, affectedByGravity: false,
+        colors: { top: '#3a3a3a', bottom: '#3a3a3a', side: '#2a2a2a' },
+    },
+    [BlockId.IronOre]: {
+        id: BlockId.IronOre, name: 'Iron Ore', transparent: false, solid: true, breakable: true, affectedByGravity: false,
+        colors: { top: '#c8a878', bottom: '#c8a878', side: '#b89868' },
+    },
+    [BlockId.GoldOre]: {
+        id: BlockId.GoldOre, name: 'Gold Ore', transparent: false, solid: true, breakable: true, affectedByGravity: false,
+        colors: { top: '#fadc50', bottom: '#fadc50', side: '#eacc40' },
+    },
+    [BlockId.DiamondOre]: {
+        id: BlockId.DiamondOre, name: 'Diamond Ore', transparent: false, solid: true, breakable: true, affectedByGravity: false,
+        colors: { top: '#5af0e0', bottom: '#5af0e0', side: '#4ae0d0' },
     },
 };
 

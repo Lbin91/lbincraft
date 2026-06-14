@@ -145,10 +145,53 @@ export class TerrainGenerator {
                         this.generateTree(chunk, x, height + 1, z);
                     }
                 }
+
+                this.generateOres(chunk, x, z, wx, wz, height);
             }
         }
 
         chunk.generated = true;
+    }
+
+    private generateOres(chunk: Chunk, x: number, z: number, wx: number, wz: number, surfaceHeight: number): void {
+        const ores = [
+            { id: BlockId.CoalOre, minY: 5, maxY: 28, rarity: 0.015, veinMax: 8 },
+            { id: BlockId.IronOre, minY: 3, maxY: 20, rarity: 0.010, veinMax: 6 },
+            { id: BlockId.GoldOre, minY: 1, maxY: 10, rarity: 0.004, veinMax: 5 },
+            { id: BlockId.DiamondOre, minY: 1, maxY: 6, rarity: 0.002, veinMax: 3 },
+        ];
+
+        for (let y = 1; y < surfaceHeight - 3 && y < 30; y++) {
+            const idx = y * CHUNK_SIZE * CHUNK_SIZE + z * CHUNK_SIZE + x;
+            if (chunk.blocks[idx] !== BlockId.Stone) continue;
+
+            const hash = ((wx * 374761393) ^ (y * 668265263) ^ (wz * 2147483647)) >>> 0;
+            const roll = (hash % 100000) / 100000;
+
+            for (const ore of ores) {
+                if (y < ore.minY || y > ore.maxY) continue;
+                if (roll < ore.rarity) {
+                    chunk.blocks[idx] = ore.id;
+                    const veinSize = 1 + (hash % ore.veinMax);
+                    this.generateOreVein(chunk, x, y, z, ore.id, veinSize);
+                    break;
+                }
+            }
+        }
+    }
+
+    private generateOreVein(chunk: Chunk, x: number, y: number, z: number, oreId: BlockId, size: number): void {
+        for (let i = 0; i < size; i++) {
+            const nx = x + Math.floor((Math.sin(i * 7.3) + 1) * 0.5);
+            const ny = y + Math.floor((Math.cos(i * 5.7) + 1) * 0.5);
+            const nz = z + Math.floor((Math.sin(i * 3.1) + 1) * 0.5);
+            if (nx >= 0 && nx < CHUNK_SIZE && ny >= 0 && ny < CHUNK_HEIGHT && nz >= 0 && nz < CHUNK_SIZE) {
+                const idx = ny * CHUNK_SIZE * CHUNK_SIZE + nz * CHUNK_SIZE + nx;
+                if (chunk.blocks[idx] === BlockId.Stone) {
+                    chunk.blocks[idx] = oreId;
+                }
+            }
+        }
     }
 
     /** Generate a simple tree at local coordinates */
