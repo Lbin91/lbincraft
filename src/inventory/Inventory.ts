@@ -6,11 +6,13 @@ export const Items = {
     Coal: 258,
     Apple: 259,
     Stick: 260,
+    Diamond: 261,
 } as const;
 
 export interface ItemStack {
     itemId: ItemId;
     count: number;
+    durability?: number;
 }
 
 const MAX_STACK = 64;
@@ -25,8 +27,24 @@ export class Inventory {
         this.hotbar = new Array(9).fill(null);
     }
 
-    addItem(itemId: ItemId, count: number = 1): boolean {
+    addItem(itemId: ItemId, count: number = 1, durability?: number): boolean {
         let remaining = count;
+
+        if (itemId >= 300) {
+            for (let i = 0; i < this.hotbar.length && remaining > 0; i++) {
+                if (this.hotbar[i] === null) {
+                    this.hotbar[i] = { itemId, count: 1, durability };
+                    remaining--;
+                }
+            }
+            for (let i = 0; i < this.slots.length && remaining > 0; i++) {
+                if (this.slots[i] === null) {
+                    this.slots[i] = { itemId, count: 1, durability };
+                    remaining--;
+                }
+            }
+            return remaining === 0;
+        }
 
         for (let i = 0; i < this.hotbar.length && remaining > 0; i++) {
             const stack = this.hotbar[i];

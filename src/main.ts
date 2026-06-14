@@ -5,6 +5,7 @@
 
 import { Game } from './engine/Game';
 import { getBlockType } from './blocks/BlockType';
+import { isTool, TOOL_INFO, TOOL_MAX_DURABILITY } from './inventory/ToolType';
 
 // Create game instance
 const game = new Game();
@@ -53,12 +54,24 @@ function setupHotbar(): void {
             const el = slotEls[i] as HTMLElement;
             if (!el) return;
             if (stack && stack.count > 0) {
-                const blockType = getBlockType(stack.itemId);
-                el.style.backgroundColor = blockType.colors.top;
-                el.textContent = stack.count > 1 ? String(stack.count) : '';
+                if (isTool(stack.itemId)) {
+                    const info = TOOL_INFO[stack.itemId];
+                    el.style.backgroundColor = info.color;
+                    const dur = stack.durability ?? 0;
+                    const maxDur = TOOL_MAX_DURABILITY[stack.itemId] ?? 1;
+                    const pct = Math.round((dur / maxDur) * 100);
+                    el.textContent = `${pct}%`;
+                    el.title = `${info.name} (${dur}/${maxDur})`;
+                } else {
+                    const blockType = getBlockType(stack.itemId);
+                    el.style.backgroundColor = blockType.colors.top;
+                    el.textContent = stack.count > 1 ? String(stack.count) : '';
+                    el.title = '';
+                }
             } else {
                 el.style.backgroundColor = '#3c3c46';
                 el.textContent = String(i + 1);
+                el.title = '';
             }
         });
     };

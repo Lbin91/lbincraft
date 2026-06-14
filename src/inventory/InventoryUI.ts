@@ -1,5 +1,7 @@
 import { Inventory, ItemStack } from './Inventory';
 import { getBlockType, BlockId } from '../blocks/BlockType';
+import { CraftingGrid } from './CraftingGrid';
+import { isTool, TOOL_INFO } from './ToolType';
 
 export class InventoryUI {
     private panel: HTMLDivElement;
@@ -9,9 +11,13 @@ export class InventoryUI {
     private isVisible: boolean = false;
     private heldStack: ItemStack | null = null;
     private heldStackEl: HTMLDivElement | null = null;
+    private craftingGrid: CraftingGrid;
+    private gridSlots: HTMLDivElement[] = [];
+    private resultSlotEl!: HTMLDivElement;
 
     constructor(inventory: Inventory) {
         this.inventory = inventory;
+        this.craftingGrid = new CraftingGrid();
         this.panel = document.createElement('div');
         this.panel.className = 'inventory-panel';
         this.panel.style.cssText = `
@@ -36,10 +42,37 @@ export class InventoryUI {
         title.style.cssText = 'font-size: 14px; margin-bottom: 8px; text-align: center;';
         this.panel.appendChild(title);
 
-        // Crafting area placeholder (Feature 14 will fill this)
         const craftArea = document.createElement('div');
-        craftArea.id = 'crafting-area-placeholder';
-        craftArea.style.cssText = 'margin-bottom: 12px;';
+        craftArea.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:12px;';
+
+        const gridContainer = document.createElement('div');
+        gridContainer.style.cssText = 'display:grid;grid-template-columns:repeat(3,40px);gap:2px;';
+        for (let r = 0; r < 3; r++) {
+            for (let c = 0; c < 3; c++) {
+                const slot = this.createCraftSlot(r, c);
+                gridContainer.appendChild(slot);
+                this.gridSlots.push(slot);
+            }
+        }
+        craftArea.appendChild(gridContainer);
+
+        const arrow = document.createElement('div');
+        arrow.textContent = '→';
+        arrow.style.cssText = 'font-size:20px;color:#888;';
+        craftArea.appendChild(arrow);
+
+        this.resultSlotEl = document.createElement('div');
+        this.resultSlotEl.style.cssText = `
+            width: 40px; height: 40px;
+            background: rgba(80, 80, 90, 0.8);
+            border: 2px solid #666;
+            border-radius: 2px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+        `;
+        this.resultSlotEl.addEventListener('click', () => this.handleCraftClick());
+        craftArea.appendChild(this.resultSlotEl);
+
         this.panel.appendChild(craftArea);
 
         // Inventory grid (27 slots, 9 columns x 3 rows)
@@ -103,6 +136,91 @@ export class InventoryUI {
         });
 
         return slot;
+    }
+
+    private createCraftSlot(row: number, col: number): HTMLDivElement {
+        const slot = document.createElement('div');
+        slot.dataset.gridRow = String(row);
+        slot.dataset.gridCol = String(col);
+        slot.style.cssText = `
+            width: 40px; height: 40px;
+            background: rgba(60, 60, 70, 0.8);
+            border: 1px solid #333;
+            border-radius: 2px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; position: relative; cursor: pointer;
+        `;
+        slot.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            this.handleGridClick(row, col);
+        });
+        return slot;
+    }
+
+    private handleGridClick(row: number, col: number): void {
+        const current = this.craftingGrid.grid[row][col];
+
+        if (this.heldStack === null) {
+            if (current !== null) {
+                this.heldStack = { itemId: current, count: 1 };
+                this.craftingGrid.setSlot(row, col, null);
+                this.createHeldStackElement();
+            }
+        } else {
+            if (current === null) {
+                this.craftingGrid.setSlot(row, col, this.heldStack.itemId);
+                this.heldStack.count--;
+                if (this.heldStack.count <= 0) {
+                    this.heldStack = null;
+                    this.removeHeldStackElement();
+                } else {
+                    this.updateHeldStackElement();
+                }
+            } else if (current === this.heldStack.itemId) {
+                return;
+            } else {
+                this.craftingGrid.setSlot(row, col, this.heldStack.itemId);
+                this.heldStack = { itemId: current, count: 1 };
+                this.updateHeldStackElement();
+            }
+        }
+        this.renderGrid();
+    }
+
+    private handleCraftClick(): void {
+        const result = this.craftingGrid.craft(this.inventory);
+        if (result) {
+            this.renderGrid();
+            this.render();
+        }
+    }
+
+    private renderGrid(): void {
+        for (let r = 0; r < 3; r++) {
+            for (let c = 0; c < 3; c++) {
+                const slot = this.gridSlots[r * 3 + c];
+                const itemId = this.craftingGrid.grid[r][c];
+                if (itemId !== null) {
+                    const blockType = getBlockType(itemId as BlockId);
+                    slot.style.backgroundColor = blockType.colors.top;
+                } else {
+                    slot.style.backgroundColor = 'rgba(60, 60, 70, 0.8)';
+                }
+            }
+        }
+        this.resultSlotEl.innerHTML = '';
+        if (this.craftingGrid.resultSlot) {
+            const result = this.craftingGrid.resultSlot;
+            if (isTool(result.itemId)) {
+                const info = TOOL_INFO[result.itemId];
+                this.resultSlotEl.style.backgroundColor = info.color;
+            } else {
+                const blockType = getBlockType(result.itemId as BlockId);
+                this.resultSlotEl.style.backgroundColor = blockType.colors.top;
+            }
+        } else {
+            this.resultSlotEl.style.backgroundColor = 'rgba(80, 80, 90, 0.8)';
+        }
     }
 
     private handleSlotClick(section: 'hotbar' | 'inventory', index: number): void {
@@ -221,6 +339,7 @@ export class InventoryUI {
         this.panel.style.display = this.isVisible ? 'block' : 'none';
         if (this.isVisible) {
             this.render();
+            this.renderGrid();
         } else {
             // Return held stack to inventory if exists
             if (this.heldStack) {

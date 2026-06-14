@@ -18,6 +18,7 @@ import { DayNightCycle } from './DayNightCycle';
 import { Inventory } from '../inventory/Inventory';
 import { InventoryUI } from '../inventory/InventoryUI';
 import type { ItemStack } from '../inventory/Inventory';
+import { isTool, getToolTier, getRequiredToolTier } from '../inventory/ToolType';
 import { Survival } from '../player/Survival';
 import { EntityManager } from '../entities/EntityManager';
 import { PlayerView } from '../player/PlayerView';
@@ -415,11 +416,34 @@ export class Game {
         const blockId = this.world.getBlock(x, y, z);
         if (!isBreakable(blockId)) return;
 
+        const requiredTier = getRequiredToolTier(blockId);
+        const stack = this.inventory.getSelectedStack();
+        let toolTier = 0;
+
+        if (stack && isTool(stack.itemId)) {
+            toolTier = getToolTier(stack.itemId);
+        }
+
+        if (requiredTier > toolTier) {
+            this.particles.spawnBlockBreak(x, y, z, blockId as BlockId);
+            this.world.setBlock(x, y, z, BlockId.Air);
+            this.chunkManager.markDirtyAt(x, y, z);
+            this.audio.playBlockBreak(blockId);
+            return;
+        }
+
         this.particles.spawnBlockBreak(x, y, z, blockId as BlockId);
         this.world.setBlock(x, y, z, BlockId.Air);
         this.chunkManager.markDirtyAt(x, y, z);
         this.inventory.addItem(blockId, 1);
         this.audio.playBlockBreak(blockId);
+
+        if (stack && isTool(stack.itemId) && stack.durability !== undefined) {
+            stack.durability--;
+            if (stack.durability <= 0) {
+                this.inventory.hotbar[this.inventory.selectedSlot] = null;
+            }
+        }
     }
 
     private placeBlock(x: number, y: number, z: number): void {
