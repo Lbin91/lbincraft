@@ -12,10 +12,12 @@ import { disposeMaterials } from './MeshBuilder';
 import { Player } from '../player/Player';
 import { Controls } from '../player/Controls';
 import { Physics } from '../player/Physics';
-import { BlockId, HOTBAR_BLOCKS, isBreakable, getBlockType } from '../blocks/BlockType';
+import { BlockId, isBreakable, getBlockType } from '../blocks/BlockType';
 import { ParticleManager } from '../effects/ParticleManager';
 import { DayNightCycle } from './DayNightCycle';
 import { Inventory } from '../inventory/Inventory';
+import { InventoryUI } from '../inventory/InventoryUI';
+import type { ItemStack } from '../inventory/Inventory';
 import { Survival } from '../player/Survival';
 import { EntityManager } from '../entities/EntityManager';
 import { PlayerView } from '../player/PlayerView';
@@ -37,11 +39,16 @@ export class Game {
     particles: ParticleManager;
     dayNight: DayNightCycle;
     inventory: Inventory;
+    inventoryUI: InventoryUI;
     survival: Survival;
     entityManager: EntityManager;
     playerView: PlayerView;
     audio: AudioManager;
     minimap: Minimap;
+
+    private inventoryOpen: boolean = false;
+    private consumeInventoryToggle: boolean = false;
+    onHotbarUpdate: ((slots: (ItemStack | null)[]) => void) | null = null;
 
     selectedSlot: number = 0;
 
@@ -118,7 +125,7 @@ export class Game {
         this.audio = new AudioManager();
         this.minimap = new Minimap();
         this.inventory = new Inventory();
-        this.inventory.fillCreative(HOTBAR_BLOCKS);
+        this.inventoryUI = new InventoryUI(this.inventory);
         this.survival = new Survival();
         this.entityManager = new EntityManager(this.scene, this.world);
         this.playerView = new PlayerView(this.scene, this.camera, this.world);
@@ -248,9 +255,13 @@ export class Game {
 
         requestAnimationFrame(this.animate);
 
-        const delta = Math.min(this.clock.getDelta(), 0.05); // Cap delta at 50ms
+        const delta = Math.min(this.clock.getDelta(), 0.05);
 
-        // Only update physics if pointer is locked (game active)
+        if (this.consumeInventoryToggle) {
+            this.toggleInventory();
+            this.consumeInventoryToggle = false;
+        }
+
         if (this.controls.isLocked()) {
             const moveDir = this.controls.getMoveDirection();
 
@@ -323,7 +334,6 @@ export class Game {
             this.frameCount = 0;
             this.fpsTimer = 0;
 
-            // Notify UI
             if (this.onStatsUpdate) {
                 this.onStatsUpdate({
                     fps: this.fps,
@@ -333,8 +343,28 @@ export class Game {
                     chunks: this.world.chunkCount,
                 });
             }
+
+            if (this.onHotbarUpdate) {
+                this.onHotbarUpdate(this.inventory.hotbar);
+            }
         }
     };
+
+    requestInventoryToggle(): void {
+        this.consumeInventoryToggle = true;
+    }
+
+    private toggleInventory(): void {
+        const isOpen = this.inventoryUI.toggle();
+        if (isOpen === this.inventoryOpen) return;
+        if (isOpen) {
+            document.exitPointerLock();
+            this.inventoryOpen = true;
+        } else {
+            this.controls.lockPointer();
+            this.inventoryOpen = false;
+        }
+    }
 
     private updateBlockHighlight(): void {
         const eyePos = this.player.getEyePosition();

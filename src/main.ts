@@ -4,7 +4,7 @@
  */
 
 import { Game } from './engine/Game';
-import { HOTBAR_BLOCKS, getBlockType } from './blocks/BlockType';
+import { getBlockType } from './blocks/BlockType';
 
 // Create game instance
 const game = new Game();
@@ -19,6 +19,7 @@ setupDebug();
 setupKeyboardShortcuts();
 setupContextMenu();
 setupMinimap();
+setupInventoryUI();
 
 // Start game loop
 game.start();
@@ -36,19 +37,31 @@ function setupHotbar(): void {
     const hotbar = document.getElementById('hotbar');
     if (!hotbar) return;
 
-    HOTBAR_BLOCKS.forEach((blockId, index) => {
+    for (let index = 0; index < 9; index++) {
         const slot = document.createElement('div');
         slot.className = 'hotbar-slot';
         if (index === 0) slot.classList.add('active');
-
-        // Use block color as visual indicator
-        const blockType = getBlockType(blockId);
-        slot.style.backgroundColor = blockType.colors.top;
-        slot.textContent = String(index + 1);
-
+        slot.style.backgroundColor = '#3c3c46';
+        slot.textContent = '';
         slot.addEventListener('click', () => selectSlot(index));
         hotbar.appendChild(slot);
-    });
+    }
+
+    game.onHotbarUpdate = (slots) => {
+        const slotEls = document.querySelectorAll('.hotbar-slot');
+        slots.forEach((stack, i) => {
+            const el = slotEls[i] as HTMLElement;
+            if (!el) return;
+            if (stack && stack.count > 0) {
+                const blockType = getBlockType(stack.itemId);
+                el.style.backgroundColor = blockType.colors.top;
+                el.textContent = stack.count > 1 ? String(stack.count) : '';
+            } else {
+                el.style.backgroundColor = '#3c3c46';
+                el.textContent = String(i + 1);
+            }
+        });
+    };
 }
 
 function selectSlot(index: number): void {
@@ -106,7 +119,7 @@ function setupDebug(): void {
 function setupKeyboardShortcuts(): void {
     window.addEventListener('keydown', (e) => {
         const num = parseInt(e.key);
-        if (num >= 1 && num <= 8) {
+        if (num >= 1 && num <= 9) {
             selectSlot(num - 1);
         }
 
@@ -125,8 +138,8 @@ function setupKeyboardShortcuts(): void {
         if (!game.controls.isLocked()) return;
         const current = game.selectedSlot;
         const next = e.deltaY > 0
-            ? (current + 1) % HOTBAR_BLOCKS.length
-            : (current - 1 + HOTBAR_BLOCKS.length) % HOTBAR_BLOCKS.length;
+            ? (current + 1) % 9
+            : (current - 1 + 9) % 9;
         selectSlot(next);
     });
 }
@@ -139,4 +152,16 @@ function setupMinimap(): void {
     const app = document.getElementById('app');
     if (!app) return;
     app.appendChild(game.minimap.getCanvas());
+}
+
+function setupInventoryUI(): void {
+    const app = document.getElementById('app');
+    if (!app) return;
+    app.appendChild(game.inventoryUI.getPanel());
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'e' || e.key === 'E') {
+            game.requestInventoryToggle();
+        }
+    });
 }
