@@ -3,32 +3,36 @@
  * Multi-octave fractal Brownian motion (fBm) for natural terrain.
  */
 
-import { createNoise2D } from 'simplex-noise';
+import { createNoise2D, createNoise3D } from 'simplex-noise';
 import { Chunk } from './Chunk';
 import { BlockId } from '../blocks/BlockType';
 import { CHUNK_SIZE, CHUNK_HEIGHT } from '../utils/math';
 
-// Terrain configuration
 const BASE_HEIGHT = 28;
 const AMPLITUDE = 16;
 const WATER_LEVEL = 24;
 
-// Noise frequencies per octave
 const FREQ_MAIN = 0.012;
 const FREQ_DETAIL = 0.04;
 const FREQ_ROUGH = 0.1;
 
+const CAVE_THRESHOLD = 0.6;
+const CAVE_MAX_HEIGHT = 28;
+const CAVE_NOISE_FREQ = 0.05;
+
 export class TerrainGenerator {
     private noise2D: (x: number, y: number) => number;
+    private caveNoise3D: (x: number, y: number, z: number) => number;
 
     constructor(seed?: number) {
-        // simplex-noise v4: createNoise2D with optional PRNG
         if (seed !== undefined) {
-            // Simple seeded PRNG (mulberry32)
             const prng = mulberry32(seed);
+            const prngCaves = mulberry32(seed ^ 0x5a5a5a);
             this.noise2D = createNoise2D(prng);
+            this.caveNoise3D = createNoise3D(prngCaves);
         } else {
             this.noise2D = createNoise2D();
+            this.caveNoise3D = createNoise3D();
         }
     }
 
@@ -78,6 +82,15 @@ export class TerrainGenerator {
                     }
 
                     chunk.blocks[y * CHUNK_SIZE * CHUNK_SIZE + z * CHUNK_SIZE + x] = blockId;
+
+                    if (y > 0 && y < CAVE_MAX_HEIGHT && blockId !== BlockId.Water) {
+                        const depthFactor = (CAVE_MAX_HEIGHT - y) / CAVE_MAX_HEIGHT;
+                        const threshold = CAVE_THRESHOLD - depthFactor * 0.15;
+                        const caveValue = this.caveNoise3D(wx * CAVE_NOISE_FREQ, y * CAVE_NOISE_FREQ, wz * CAVE_NOISE_FREQ);
+                        if (caveValue > threshold && blockId !== BlockId.Bedrock) {
+                            chunk.blocks[y * CHUNK_SIZE * CHUNK_SIZE + z * CHUNK_SIZE + x] = BlockId.Air;
+                        }
+                    }
                 }
 
                 // Generate trees on grass surfaces (low probability)
