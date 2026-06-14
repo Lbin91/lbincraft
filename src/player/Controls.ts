@@ -94,6 +94,14 @@ export class Controls {
         return this.keys['ShiftLeft'] ?? false;
     }
 
+    consumeToggleView(): boolean {
+        if (this.keys['KeyF']) {
+            this.keys['KeyF'] = false;
+            return true;
+        }
+        return false;
+    }
+
     /** Get the horizontal movement direction in world space */
     getMoveDirection(): THREE.Vector3 {
         const { forward, right } = this.getMoveInput();

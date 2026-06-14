@@ -18,6 +18,7 @@ import { DayNightCycle } from './DayNightCycle';
 import { Inventory } from '../inventory/Inventory';
 import { Survival } from '../player/Survival';
 import { EntityManager } from '../entities/EntityManager';
+import { PlayerView } from '../player/PlayerView';
 
 export class Game {
     scene: THREE.Scene;
@@ -36,6 +37,7 @@ export class Game {
     inventory: Inventory;
     survival: Survival;
     entityManager: EntityManager;
+    playerView: PlayerView;
 
     selectedSlot: number = 0;
 
@@ -107,6 +109,7 @@ export class Game {
         this.inventory.fillCreative(HOTBAR_BLOCKS);
         this.survival = new Survival();
         this.entityManager = new EntityManager(this.scene, this.world);
+        this.playerView = new PlayerView(this.scene, this.camera, this.world);
 
         // Clock
         this.clock = new THREE.Clock();
@@ -179,12 +182,14 @@ export class Game {
 
         // Only update physics if pointer is locked (game active)
         if (this.controls.isLocked()) {
-            // Get movement direction
             const moveDir = this.controls.getMoveDirection();
 
-            // Apply jump
             if (this.controls.isJumping()) {
                 this.physics.jump(this.player);
+            }
+
+            if (this.controls.consumeToggleView()) {
+                this.playerView.toggleMode();
             }
 
             this.physics.update(this.player, moveDir, delta);
@@ -207,12 +212,7 @@ export class Game {
         this.dayNight.update(delta);
         this.entityManager.update(delta, this.world, this.player.position, this.player.yaw, this.dayNight.isNight);
 
-        // Update camera from player
-        const eyePos = this.player.getEyePosition();
-        this.camera.position.copy(eyePos);
-        this.camera.rotation.order = 'YXZ';
-        this.camera.rotation.y = this.player.yaw;
-        this.camera.rotation.x = this.player.pitch;
+        this.playerView.update(delta, this.player);
 
         this.updateBlockHighlight();
 
@@ -331,11 +331,16 @@ export class Game {
     selectSlot(index: number): void {
         this.inventory.selectSlot(index);
         this.selectedSlot = this.inventory.selectedSlot;
+        const stack = this.inventory.getSelectedStack();
+        if (stack) {
+            this.playerView.updateHeldItem(stack.itemId as BlockId);
+        }
     }
 
     /** Clean up resources */
     dispose(): void {
         this.running = false;
+        this.playerView.dispose();
         this.entityManager.dispose();
         this.particles.dispose();
         this.renderer.dispose();
