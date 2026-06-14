@@ -17,6 +17,7 @@ import { ParticleManager } from '../effects/ParticleManager';
 import { DayNightCycle } from './DayNightCycle';
 import { Inventory } from '../inventory/Inventory';
 import { Survival } from '../player/Survival';
+import { EntityManager } from '../entities/EntityManager';
 
 export class Game {
     scene: THREE.Scene;
@@ -34,6 +35,7 @@ export class Game {
     dayNight: DayNightCycle;
     inventory: Inventory;
     survival: Survival;
+    entityManager: EntityManager;
 
     selectedSlot: number = 0;
 
@@ -104,6 +106,7 @@ export class Game {
         this.inventory = new Inventory();
         this.inventory.fillCreative(HOTBAR_BLOCKS);
         this.survival = new Survival();
+        this.entityManager = new EntityManager(this.scene, this.world);
 
         // Clock
         this.clock = new THREE.Clock();
@@ -202,6 +205,7 @@ export class Game {
 
         this.particles.update(delta);
         this.dayNight.update(delta);
+        this.entityManager.update(delta, this.world, this.player.position, this.player.yaw, this.dayNight.isNight);
 
         // Update camera from player
         const eyePos = this.player.getEyePosition();
@@ -332,6 +336,7 @@ export class Game {
     /** Clean up resources */
     dispose(): void {
         this.running = false;
+        this.entityManager.dispose();
         this.particles.dispose();
         this.renderer.dispose();
         disposeMaterials();
